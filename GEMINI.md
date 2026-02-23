@@ -1,0 +1,52 @@
+# Wire Framework — Gemini CLI Extension
+
+This extension provides the **Wire Framework**, an AI-accelerated delivery system for data platform engagements. It encodes 20+ years of analytics engineering methodology as executable workflow specifications, enabling an AI agent to produce production-grade artifacts across the full project lifecycle.
+
+## Usage
+
+All commands are available immediately — no install step required:
+
+```
+/dp start              — See all projects and available commands
+/dp new                — Create a new project
+/dp status <project>   — Check project status
+```
+
+### Delivery commands
+
+```
+/dp requirements generate <project>   — Extract requirements from SOW
+/dp requirements validate <project>   — Validate requirements
+/dp requirements review <project>     — Stakeholder review
+
+/dp conceptual_model generate <project>
+/dp data_model generate <project>
+/dp dbt generate <project>
+/dp semantic_layer generate <project>
+/dp dashboards generate <project>
+... (and validate/review for each)
+```
+
+### Project data
+
+Project data is stored in `.agent_v2/` in the current repository. This directory is created automatically when you run `/dp new`.
+
+## MCP Integrations
+
+This extension configures optional MCP servers for:
+- **Atlassian** — Jira issue tracking and Confluence document search
+- **Fathom** — Meeting transcript context for reviews
+- **Context7** — Library documentation lookups
+
+## Tool Mapping
+
+When following workflow specifications, use these Gemini CLI equivalents:
+
+| Workflow Reference | Gemini CLI Tool |
+|---|---|
+| Read tool | Read files directly |
+| Glob tool | Use `find` or `ls` commands |
+| Grep tool | Use `grep` or `rg` commands |
+| Write tool | Write files directly |
+| Edit tool | Edit files directly |
+| Bash tool | Run shell commands |
