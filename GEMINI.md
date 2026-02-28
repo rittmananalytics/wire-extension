@@ -9,6 +9,7 @@ All commands are available immediately — no install step required:
 ```
 /dp start              — See all projects and available commands
 /dp new                — Create a new project
+/dp autopilot <sow>    — Autonomous end-to-end execution from SOW
 /dp status <project>   — Check project status
 ```
 
@@ -29,7 +30,7 @@ All commands are available immediately — no install step required:
 
 ### Project data
 
-Project data is stored in `.agent_v2/` in the current repository. This directory is created automatically when you run `/dp new`.
+Project data is stored in `.wire/` in the current repository. This directory is created automatically when you run `/dp new` or `/dp autopilot`.
 
 ## MCP Integrations
 
