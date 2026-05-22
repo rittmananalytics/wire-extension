@@ -9,6 +9,7 @@ All commands are available immediately — no install step required:
 ```
 /dp start              — See all projects and available commands
 /dp new                — Create a new project
+/dp guide [new|resume|explain] — Interactive co-pilot: orients new users and surfaces the right next action
 /dp autopilot <sow>    — Autonomous end-to-end execution from SOW
 /dp status <project>   — Check project status
 ```
