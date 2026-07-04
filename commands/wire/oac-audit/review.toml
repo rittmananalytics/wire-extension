@@ -1,6 +1,6 @@
-description = "Demo and stakeholder approval for semantic search"
+description = "Internal RA review of OAC audit"
 prompt = """
-# Demo and stakeholder approval for semantic search
+# Internal RA review of OAC audit
 
 ## User Input (<release-folder>)
 
@@ -36,7 +36,7 @@ Run the following as a **single** Bash command, exactly as written. It:
 Do not split it, do not inspect its output, and proceed immediately to the Workflow Specification. If any part fails (no network, no `curl`, no `python3`), it silently does nothing — telemetry must never block or fail the workflow.
 
 ```bash
-[ "${WIRE_TELEMETRY:-true}" = "false" ] || ( mkdir -p ~/.wire; if [ ! -f ~/.wire/telemetry_id ]; then WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]'); echo "$WIRE_UID" > ~/.wire/telemetry_id; curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"traits\":{\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"os\":\"$(uname -s)\",\"plugin_version\":\"3.10.3\",\"first_seen\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}" > /dev/null 2>&1; fi; WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo unknown); curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"ac_semantic_search-review\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"3.10.3\",\"os\":\"$(uname -s)\",\"runtime\":\"gemini\",\"autopilot\":\"false\"}}" > /dev/null 2>&1 ) > /dev/null 2>&1 &
+[ "${WIRE_TELEMETRY:-true}" = "false" ] || ( mkdir -p ~/.wire; if [ ! -f ~/.wire/telemetry_id ]; then WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]'); echo "$WIRE_UID" > ~/.wire/telemetry_id; curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"traits\":{\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"os\":\"$(uname -s)\",\"plugin_version\":\"3.10.4\",\"first_seen\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}" > /dev/null 2>&1; fi; WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo unknown); curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"oac-audit-review\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"3.10.4\",\"os\":\"$(uname -s)\",\"runtime\":\"gemini\",\"autopilot\":\"false\"}}" > /dev/null 2>&1 ) > /dev/null 2>&1 &
 ```
 
 ## Rules
@@ -50,162 +50,94 @@ Do not split it, do not inspect its output, and proceed immediately to the Workf
 ## Workflow Specification
 
 ---
-description: Review AI semantic search feature with stakeholders for approval
-argument-hint: <project-folder>
+description: Internal RA review of OAC audit
 ---
 
-# Agentic Commerce — Semantic Search Review Command
+# OAC Audit — Review
 
 ## Purpose
 
-Demo the semantic search feature to stakeholders, walk through the validation report, and capture approval or change requests before moving to the next feature.
-
-## Usage
-
-```bash
-/wire:ac_semantic_search-review YYYYMMDD_project_name
-```
+Internal RA review of the OAC audit before it feeds into the migration inventory. The reviewer confirms physical/logical/presentation-layer coverage, agrees on decommission decisions for unused subject areas or physical tables, checks that warehouse dependency mapping and connection pools are complete, and flags any physical tables or raw SQL constructs needing deeper investigation before the migration strategy is drafted — particularly `rewrite_sql`/`rebuild` physical tables and any construct classified `redesign` or `manual-review-out-of-scope`.
 
 ## Prerequisites
 
-- `semantic_search.validate: pass` in status.md
+- `audit/oac_audit.md` exists with `validate: pass`
+
+## Inputs
+
+- `.wire/releases/$ARGUMENTS/audit/oac_audit.md`
+- `.wire/releases/$ARGUMENTS/status.md`
 
 ## Workflow
 
-### Step 1: Verify Prerequisites
+### Step 1: Load meeting context
 
-Check `semantic_search.validate == pass`. If not:
-```
-Warning: Semantic search has not passed validation.
-Run `/wire:ac_semantic_search-validate <project>` first.
-Proceed anyway? (y/n)
-```
+Follow `specs/utils/meeting_context.md` to retrieve any Fathom recordings relevant to this release. Search for discussions about reporting, dashboards, OAC, semantic model ownership, or specific subject areas. Surface relevant extracts — particularly mentions of critical subject areas, model owners, or known query issues.
 
-### Step 2: Present for Review
+### Step 2: Present audit for review
 
-```
-## Semantic Search Review Session
+Display a summary:
+- Total databases, connection pools, physical tables, physical joins, logical tables, subject areas
+- Migration approach distribution for physical tables (repoint / rewrite_sql / rebuild)
+- Complexity breakdown for physical tables (Low / Medium / High)
+- Raw SQL constructs by type and by `construct_action` (translate / redesign / manual-review-out-of-scope)
+- Connection pools and the physical tables per connection
+- Source-resolution coverage and the unresolved physical tables
+- Logical and presentation layer summary, with any `migration_impact` exceptions called out
+- Structural validation (`validate_smml.py`) result
+- dbt model dependencies and their migration batch dependencies
+- Subject areas/physical tables flagged for decommission with reasons
 
-**Project:** [PROJECT_NAME]
-**Feature:** AI Semantic Search
-**Provider:** [from validation report]
-**Products indexed:** [N]
+### Step 3: Gather reviewer feedback
 
-### What to Review
+1. Is the physical/logical/presentation catalog complete — any databases, schemas, or subject areas not captured here?
+2. Do the decommission decisions for unused/archived subject areas and physical tables look right? Any that should be kept or cut differently?
+3. Are there any High-complexity physical tables (`rewrite_sql` or `rebuild`) that need a spike before migration strategy is drafted?
+4. Are the `redesign` and `manual-review-out-of-scope` constructs fully accounted for, and does the team agree on who owns reauthoring each one?
+5. Are the warehouse object dependencies for physical tables correct — do the listed tables/views match what the team knows about these subject areas?
+6. Does the structural validation result need action before this audit is treated as final?
 
-Please evaluate the semantic search feature:
+### Step 4: Apply feedback and record decision
 
-**Relevance Quality**
-- [ ] Natural language queries return relevant products (not just keyword matches)
-- [ ] Typos are handled gracefully
-- [ ] Vague/descriptive queries work (e.g. "gift for a cyclist")
-- [ ] Relevance explanations are clear and useful
+Incorporate corrections into `audit/oac_audit.md`. Record:
 
-**User Experience**
-- [ ] Search bar is prominent and easy to find
-- [ ] Example query pills are relevant to our catalog
-- [ ] Loading state is smooth (not jarring)
-- [ ] Results feel fast enough for a good experience
-- [ ] Active query label and clear button work well
+```markdown
+## Review
 
-**Integration**
-- [ ] Product grid updates correctly after search
-- [ ] Search results look on-brand
-- [ ] No visible errors or rough edges
-```
+**Reviewed by**: {{REVIEWER_NAME}}
+**Review date**: {{TODAY}}
+**Decision**: approved | changes_requested
 
-### Step 3: Retrieve External Context (Optional)
-
-1. Follow the meeting context retrieval workflow in `specs/utils/meeting_context.md`
-   - Pass project folder and artifact `semantic_search`
-2. Follow the Atlassian search workflow in `specs/utils/atlassian_search.md`
-   - Search for any prior discussions about search requirements or provider selection
-
-### Step 4: Demo Script
-
-Guide the reviewer through a live demo using these queries (adapt to actual catalog):
-
-1. **Descriptive query**: "lightweight jersey for a hot summer ride"
-   - Expected: summer/breathable products
-2. **Gift intent**: "something for a cyclist who has everything"
-   - Expected: premium or gift-friendly products
-3. **Typo tolerance**: "cyclng shorts" (deliberate typo)
-   - Expected: cycling shorts despite misspelling
-4. **Contrast with keyword search**: Search for "breathable" in the old search vs semantic
-   - Demonstrates the improvement
-
-### Step 5: Gather Feedback
-
-```
-Please provide your feedback:
-
-1. **Reviewer name and role:**
-2. **Decision:**
-   - [ ] Approved
-   - [ ] Approved with minor notes
-   - [ ] Changes requested
-   - [ ] Needs discussion
-3. **Relevance quality rating (1-5):**
-4. **UX rating (1-5):**
-5. **Specific feedback:**
-6. **Example queries that didn't work well (if any):**
+### Reviewer notes
+[Capture comments, corrections, or follow-up actions]
 ```
 
-### Step 6: Record Outcome
+### Step 5: Update status
 
-**If approved:**
 ```yaml
-semantic_search:
-  generate: complete
-  validate: pass
-  review: approved
-  reviewed_by: "Name, Role"
-  review_date: YYYY-MM-DD
-  relevance_rating: [1-5]
-  ux_rating: [1-5]
-  review_notes: "[notes]"
+artifacts:
+  oac_audit:
+    review: approved | changes_requested
+    reviewed_by: "{{REVIEWER_NAME}}"
+    reviewed_date: "{{TODAY}}"
 ```
 
-**If changes requested:**
-```yaml
-semantic_search:
-  review: changes_requested
-  reviewed_by: "Name, Role"
-  review_date: YYYY-MM-DD
-  review_notes: "Changes: [list]"
+### Step 6: Output next command
+
+If approved and all other audits are also approved:
+```
+/wire:migration-inventory-generate $ARGUMENTS
 ```
 
-### Step 7: Sync to Jira (Optional)
-
-Follow `specs/utils/jira_sync.md` — artifact: `semantic_search`, action: `review`.
-
-### Step 8: Suggest Next Steps
-
-**If approved:**
+If other audits are still pending:
 ```
-## Semantic Search Review: Approved ✓
-
-### Suggested Next Features
-
-- **Conversational Assistant** (builds on search): 
-  `/wire:ac_conversational_assistant-generate <project>`
-- **Personalisation Engine** (enhances search with user context):
-  `/wire:ac_personalisation-generate <project>`
+Continue with remaining audits. When all audits are approved:
+/wire:migration-inventory-generate $ARGUMENTS
 ```
 
-**If changes requested:**
-```
-## Semantic Search Review: Changes Requested
+## Review Gate
 
-Changes needed:
-[list from feedback]
-
-After changes: re-validate and re-review.
-```
-
-## Output
-
-- Updated `status.md` with review outcome
+The OAC audit review is an internal RA gate. Approval confirms the physical, logical, and presentation layers are fully accounted for, warehouse dependency mapping for the physical layer is complete enough to drive cutover sequencing, connection pools are captured, raw SQL constructs are fully scoped and classified, and no blocking unknowns remain before migration strategy work begins. The output feeds the migration inventory's dependency graph — specifically which warehouse objects must exist on target before each physical table can be repointed.
 
 Execute the complete workflow as specified above.
 

@@ -1,6 +1,6 @@
-description = "Stakeholder sign-off on base storefront"
+description = "Validate Omni audit completeness and dependency coverage"
 prompt = """
-# Stakeholder sign-off on base storefront
+# Validate Omni audit completeness and dependency coverage
 
 ## User Input (<release-folder>)
 
@@ -36,7 +36,7 @@ Run the following as a **single** Bash command, exactly as written. It:
 Do not split it, do not inspect its output, and proceed immediately to the Workflow Specification. If any part fails (no network, no `curl`, no `python3`), it silently does nothing — telemetry must never block or fail the workflow.
 
 ```bash
-[ "${WIRE_TELEMETRY:-true}" = "false" ] || ( mkdir -p ~/.wire; if [ ! -f ~/.wire/telemetry_id ]; then WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]'); echo "$WIRE_UID" > ~/.wire/telemetry_id; curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"traits\":{\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"os\":\"$(uname -s)\",\"plugin_version\":\"3.10.3\",\"first_seen\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}" > /dev/null 2>&1; fi; WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo unknown); curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"ac_storefront-review\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"3.10.3\",\"os\":\"$(uname -s)\",\"runtime\":\"gemini\",\"autopilot\":\"false\"}}" > /dev/null 2>&1 ) > /dev/null 2>&1 &
+[ "${WIRE_TELEMETRY:-true}" = "false" ] || ( mkdir -p ~/.wire; if [ ! -f ~/.wire/telemetry_id ]; then WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]'); echo "$WIRE_UID" > ~/.wire/telemetry_id; curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"traits\":{\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"os\":\"$(uname -s)\",\"plugin_version\":\"3.10.4\",\"first_seen\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}" > /dev/null 2>&1; fi; WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo unknown); curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"omni-audit-validate\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"3.10.4\",\"os\":\"$(uname -s)\",\"runtime\":\"gemini\",\"autopilot\":\"false\"}}" > /dev/null 2>&1 ) > /dev/null 2>&1 &
 ```
 
 ## Rules
@@ -50,188 +50,107 @@ Do not split it, do not inspect its output, and proceed immediately to the Workf
 ## Workflow Specification
 
 ---
-description: Review base e-commerce storefront with stakeholders for approval
-argument-hint: <project-folder>
+description: Validate Omni audit completeness, warehouse dependency coverage, connection documentation, and migration approach assignments
 ---
 
-# Agentic Commerce Storefront Review Command
+# Omni Audit — Validate
 
 ## Purpose
 
-Present the validated storefront to stakeholders for sign-off before agentic feature development begins. Captures approval or change requests and records the outcome in status.md.
-
-## Usage
-
-```bash
-/wire:ac_storefront-review YYYYMMDD_project_name
-```
+Checks the Omni audit for completeness and internal consistency: every view has a migration approach and complexity, warehouse dependencies are mapped with a coverage metric, every tile is classified as topic-backed or raw-SQL, every raw-SQL tile is scanned and given its own approach, connections are recorded, and the model/content counts match the source. Produces a PASS/FAIL report with specific gaps to address before review.
 
 ## Prerequisites
 
-- `storefront.validate: pass` in status.md
+- `audit/omni_audit.md` exists (omni_audit generate: complete)
+
+## Inputs
+
+- `.wire/releases/$ARGUMENTS/audit/omni_audit.md`
+- `.wire/releases/$ARGUMENTS/status.md`
 
 ## Workflow
 
-### Step 1: Verify Prerequisites
+### Step 1: Load the audit
 
-1. Read `.wire/<project_id>/status.md`
-2. Check `storefront.validate == pass`
+Read `audit/omni_audit.md`. Confirm it is non-empty and contains the expected sections (Summary, Model Catalog, Content Hierarchy, Connection Inventory, Warehouse Dependency Map, Raw-SQL Tile Catalog, Unresolved Views, Unresolved Raw-SQL Tiles, Excluded Content).
 
-If not:
-```
-Warning: Storefront has not passed validation yet.
+### Step 2: Run validation checks
 
-Run `/wire:ac_storefront-validate <project>` before review.
+**Check 1 — All views have a migration approach**
+Every row in the model catalog has a value in `migration_approach` (repoint / rewrite_sql / rebuild).
+PASS/FAIL with views missing an approach.
 
-Proceed anyway? (y/n)
-```
+**Check 2 — All views have a complexity rating**
+Every row has a `complexity` value (Low / Medium / High).
+PASS/FAIL with views missing complexity.
 
-### Step 2: Present for Review
+**Check 3 — Source objects resolved across sql_type, coverage reported**
+Source-object resolution is attempted for every view regardless of `sql_type`. Each view with a resolvable source has ≥1 entry in `warehouse_objects`; each genuinely unresolvable view is marked `source_resolved: false` and listed under "Unresolved views". The coverage metric (`resolved_view_count` / `active_view_count`) is present, and status.md carries `resolved_view_count`, `unresolved_view_count`, and `source_resolution_coverage_pct`.
+PASS: resolution attempted for all sql_types, coverage present, every unresolved view listed.
+FAIL: views left blank without being listed, or coverage metric missing.
 
-Output the review briefing:
+**Check 4 — dbt model views cross-referenced**
+Every view whose resolved source is a dbt model has a note confirming whether that model exists in the dbt audit (or is out of scope).
+PASS/FAIL with views missing the cross-reference.
 
-```
-## Storefront Review Session
+**Check 5 — Connections documented**
+Every distinct `connection_id` referenced by a view appears in the connection inventory with its engine.
+PASS/FAIL.
 
-**Project:** [PROJECT_NAME]
-**Lovable Preview:** [lovable_url from status.md]
-**GitHub Repo:** [github_repo from status.md]
-**Validation Report:** .wire/[project_id]/storefront/validation_report.md
+**Check 6 — Every tile classified, raw-SQL tiles scanned**
+Every tile in the content hierarchy has a `query_surface` value (`topic` or `raw_sql`). Every `raw_sql` tile has been scanned for source-dialect constructs (`::`, `FLATTEN`, `QUALIFY`, `IFF`, `NVL`, `CONVERT_TIMEZONE`, variant `:` paths) and has a `sql_summary`.
+PASS/FAIL with tiles missing a query_surface value or an unscanned raw-SQL tile.
 
-### What to Review
+**Check 7 — Raw-SQL tiles have a migration approach, unresolved tiles listed**
+Every `raw_sql` tile has a `migration_approach` (repoint / rewrite_sql / rebuild) distinct from `inherits_via_model`. Each raw-SQL tile with a resolvable source has ≥1 entry in `warehouse_objects`; each unresolvable one is marked `source_resolved: false` and listed under "Unresolved raw-SQL tiles" — never dropped.
+PASS/FAIL with tiles missing an approach or an unlisted unresolved tile.
 
-Please review the storefront against the following criteria:
+**Check 8 — Archived/unused content has a decision**
+Every archived or unused workbook/tile has either `include_in_migration: false` with a decommission reason, or `include_in_migration: true` with a note.
+PASS/FAIL with undecided content.
 
-**Brand & Design**
-- [ ] Visual identity matches the brief (logo, colours, typography)
-- [ ] Hero section communicates the brand proposition
-- [ ] Product cards look correct and on-brand
-- [ ] Mobile experience is acceptable
+**Check 9 — Model and content counts match source**
+The counts of connections, topics, views, folders, workbooks, and tiles in the audit tables match `connection_count`, `topic_count`, `view_count`, `folder_count`, `workbook_count`, and `tile_count` in status.md.
+PASS/FAIL with mismatched counts.
 
-**Commerce Functionality**
-- [ ] Products display correctly from Shopify
-- [ ] Product detail pages show all required information
-- [ ] Cart add/update/remove works smoothly
-- [ ] Checkout flow is correct
+### Step 3: Write validation report
 
-**Technical Readiness**
-- [ ] GitHub repo is accessible and complete
-- [ ] Supabase backend is configured
-- [ ] Project is ready for agentic feature development
-```
+Append a `## Validation` section to `audit/omni_audit.md` with a per-check PASS/FAIL table and a "Gaps to address" list.
 
-### Step 3: Retrieve External Context (Optional)
+### Step 4: Update status
 
-1. Follow the meeting context retrieval workflow in `specs/utils/meeting_context.md`
-   - Pass project folder and artifact name `storefront`
-   - If Fathom MCP is available and relevant meetings found, present meeting context
-2. Follow the Atlassian search workflow in `specs/utils/atlassian_search.md`
-   - Search for any design briefs or brand guidelines in Confluence
-   - Surface any Jira comments on the storefront ticket
-
-### Step 4: Gather Reviewer Feedback
-
-Ask:
-
-```
-Please review the Lovable preview and the validation report, then provide your feedback:
-
-1. **Reviewer name and role:**
-2. **Overall decision:**
-   - [ ] Approved — proceed to feature development
-   - [ ] Approved with minor notes — proceed, address notes during feature dev
-   - [ ] Changes requested — list below before proceeding
-   - [ ] Needs discussion — schedule follow-up
-
-3. **Specific feedback:** (describe any issues or changes required)
-4. **Priority of changes:** (if changes requested — which are blockers vs nice-to-haves?)
-```
-
-### Step 5: Record Outcome and Update Status
-
-**If approved:**
 ```yaml
-storefront:
-  generate: complete
-  validate: pass
-  review: approved
-  reviewed_by: "Name, Role"
-  review_date: YYYY-MM-DD
-  review_notes: "Minor notes: [list]"
+artifacts:
+  omni_audit:
+    validate: pass | fail
+    validated_date: "{{TODAY}}"
 ```
 
-**If changes requested:**
-```yaml
-storefront:
-  generate: complete
-  validate: pass
-  review: changes_requested
-  reviewed_by: "Name, Role"
-  review_date: YYYY-MM-DD
-  review_notes: "Changes required: [list]"
+### Step 5: Output next command
+
+If PASS:
+```
+/wire:omni-audit-review $ARGUMENTS
 ```
 
-### Step 6: Sync to Jira (Optional)
-
-Follow the Jira sync workflow in `specs/utils/jira_sync.md`:
-- Artifact: `storefront`
-- Action: `review`
-- Status: the review state just written
-
-### Step 7: Suggest Next Steps
-
-**If approved:**
+If FAIL:
 ```
-## Storefront Review: Approved ✓
-
-The storefront is approved. You can now begin agentic feature development.
-
-### Recommended Feature Development Order
-
-1. **Semantic Search** (quickest win, most visible):
-   `/wire:ac_semantic_search-generate <project>`
-
-2. **Conversational Shopping Assistant** (highest engagement):
-   `/wire:ac_conversational_assistant-generate <project>`
-
-3. **Personalisation Engine** (enables other features):
-   `/wire:ac_personalisation-generate <project>`
-
-4. **Virtual Try-On** (high wow factor):
-   `/wire:ac_virtual_tryon-generate <project>`
-
-5. **Visual Similarity** (catalog discovery):
-   `/wire:ac_visual_similarity-generate <project>`
-
-6. **LLM Chat with Tools** (autonomous agent layer):
-   `/wire:ac_llm_tools-generate <project>`
-
-7. **UCP Merchant Server** (external agent API):
-   `/wire:ac_ucp_server-generate <project>`
-
-8. **Demo Orchestration** (stakeholder showcasing):
-   `/wire:ac_demo_orchestration-generate <project>`
+Validation failed. Address the gaps listed above, then re-run:
+/wire:omni-audit-validate $ARGUMENTS
 ```
 
-**If changes requested:**
-```
-## Storefront Review: Changes Requested
 
-The following changes are needed before proceeding:
+## Post-Execution Hooks
 
-[List changes from reviewer feedback]
+After updating `status.md`, run these in sequence:
 
-**Steps:**
-1. Apply changes in Lovable using the corrective prompts
-2. Re-run validation: `/wire:ac_storefront-validate <project>`
-3. Re-run review: `/wire:ac_storefront-review <project>`
-```
+1. **Execution log** — Append one row to `.wire/releases/$ARGUMENTS/execution_log.md` following `specs/utils/execution_log.md`.
 
-## Output
+2. **Jira sync** — Follow `specs/utils/jira_sync.md`. Pass `$ARGUMENTS` as project_folder, `omni_audit` as artifact, `validate` as action.
 
-This command produces:
-- Updated `.wire/<project_id>/status.md` with review outcome
-- Optional Jira ticket status update
+3. **Document store** — Follow `specs/utils/docstore_sync.md`. Pass `$ARGUMENTS` as project_folder, `omni_audit` as artifact_id, `Omni Audit` as artifact_name, and the `file` value from `artifacts.omni_audit` in status.md as file_path.
+
+4. **Auto-commit** — Follow `specs/utils/commit.md`. Pass `$ARGUMENTS` as release_folder, `omni_audit` as artifact, `validate` as action.
 
 Execute the complete workflow as specified above.
 
