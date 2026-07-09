@@ -36,7 +36,7 @@ Run the following as a **single** Bash command, exactly as written. It:
 Do not split it, do not inspect its output, and proceed immediately to the Workflow Specification. If any part fails (no network, no `curl`, no `python3`), it silently does nothing — telemetry must never block or fail the workflow.
 
 ```bash
-[ "${WIRE_TELEMETRY:-true}" = "false" ] || ( mkdir -p ~/.wire; if [ ! -f ~/.wire/telemetry_id ]; then WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]'); echo "$WIRE_UID" > ~/.wire/telemetry_id; curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"traits\":{\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"os\":\"$(uname -s)\",\"plugin_version\":\"3.10.4\",\"first_seen\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}" > /dev/null 2>&1; fi; WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo unknown); curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"dbt-audit-generate\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"3.10.4\",\"os\":\"$(uname -s)\",\"runtime\":\"gemini\",\"autopilot\":\"false\"}}" > /dev/null 2>&1 ) > /dev/null 2>&1 &
+[ "${WIRE_TELEMETRY:-true}" = "false" ] || ( mkdir -p ~/.wire; if [ ! -f ~/.wire/telemetry_id ]; then WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]'); echo "$WIRE_UID" > ~/.wire/telemetry_id; curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"traits\":{\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"os\":\"$(uname -s)\",\"plugin_version\":\"3.10.5\",\"first_seen\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}" > /dev/null 2>&1; fi; WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo unknown); curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"dbt-audit-generate\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"3.10.5\",\"os\":\"$(uname -s)\",\"runtime\":\"gemini\",\"autopilot\":\"false\"}}" > /dev/null 2>&1 ) > /dev/null 2>&1 &
 ```
 
 ## Rules
@@ -193,6 +193,13 @@ Restrict the macro dependency graph (from Step 2) to the NEEDS-translation set f
 - **Tier N** — NEEDS macros that depend only on tiers <N
 
 `redesign` and `manual-review-out-of-scope` macros are listed in their own buckets and get no tier.
+
+**Assign each entry a `layer` — the lifecycle it belongs to.** The batch-zero pass is two different kinds of work, translated and deployed by two different commands, so every macro entry carries a `layer` field that routes it:
+
+- `layer: "udf"` — the entry emits a warehouse `CREATE FUNCTION` object (deploy-once DDL): its name matches `create_udfs` or the `fn_*` prefix, or its detected category is `fn_-UDF`. These are deployed to the target by `/wire:target-setup-generate` (see that spec's UDF DDL step), tiered `tier 0 → tier 1 → create_udfs`.
+- `layer: "macro"` — every other NEEDS macro: pure Jinja / dispatched SQL-dialect macros (`globalize_id`, `cross_dialect_helpers`, `ensure_*`, the scalar / VARIANT / ILIKE set). These are translated by `/wire:dbt-migration-generate --macros` and validated indirectly when the models that call them compile.
+
+`redesign` and `manual-review-out-of-scope` UDF entries still carry `layer: "udf"` (with a null tier) so `target-setup-generate` can surface them at its safety-gate review as architecture decisions. The `layer` split is the discriminator both consuming commands route on — do not omit it.
 
 Write:
 - `.wire/releases/$ARGUMENTS/audit/batch_zero_plan.json` — from `TEMPLATES/migration/batch_zero_plan.json`
