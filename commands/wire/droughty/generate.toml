@@ -16,6 +16,10 @@ When following the workflow specification below, resolve paths as follows:
 
 ## Telemetry
 
+---
+description: Internal utility — sends one anonymous usage event per command run so the Wire Framework team can understand adoption and usage patterns
+---
+
 # Telemetry — Anonymous Usage Tracking
 
 ## Purpose

@@ -16,6 +16,10 @@ When following the workflow specification below, resolve paths as follows:
 
 ## Telemetry
 
+---
+description: Internal utility — sends one anonymous usage event per command run so the Wire Framework team can understand adoption and usage patterns
+---
+
 # Telemetry — Anonymous Usage Tracking
 
 ## Purpose
@@ -51,7 +55,7 @@ Do not split it, do not inspect its output, and proceed immediately to the Workf
 
 ---
 description: Manage and configure MCP server connections for the Wire Framework
-argument-hint: [list/view/check] [server-name or release-folder]
+argument-hint: "[list/view/check] [server-name or release-folder]"
 ---
 
 # Wire MCP Command
