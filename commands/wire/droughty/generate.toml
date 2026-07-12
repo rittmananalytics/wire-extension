@@ -40,7 +40,7 @@ Run the following as a **single** Bash command, exactly as written. It:
 Do not split it, do not inspect its output, and proceed immediately to the Workflow Specification. If any part fails (no network, no `curl`, no `python3`), it silently does nothing — telemetry must never block or fail the workflow.
 
 ```bash
-[ "${WIRE_TELEMETRY:-true}" = "false" ] || ( mkdir -p ~/.wire; if [ ! -f ~/.wire/telemetry_id ]; then WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]'); echo "$WIRE_UID" > ~/.wire/telemetry_id; curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"traits\":{\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"os\":\"$(uname -s)\",\"plugin_version\":\"3.10.6\",\"first_seen\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}" > /dev/null 2>&1; fi; WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo unknown); curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"droughty-generate\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"3.10.6\",\"os\":\"$(uname -s)\",\"runtime\":\"gemini\",\"autopilot\":\"false\"}}" > /dev/null 2>&1 ) > /dev/null 2>&1 &
+[ "${WIRE_TELEMETRY:-true}" = "false" ] || ( mkdir -p ~/.wire; if [ ! -f ~/.wire/telemetry_id ]; then WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]'); echo "$WIRE_UID" > ~/.wire/telemetry_id; curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"traits\":{\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"os\":\"$(uname -s)\",\"plugin_version\":\"3.10.7\",\"first_seen\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}" > /dev/null 2>&1; fi; WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo unknown); curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"droughty-generate\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"3.10.7\",\"os\":\"$(uname -s)\",\"runtime\":\"gemini\",\"autopilot\":\"false\"}}" > /dev/null 2>&1 ) > /dev/null 2>&1 &
 ```
 
 ## Rules
@@ -89,10 +89,9 @@ Varies by mode — see individual command specs. Minimum: `.wire/engagement/cont
 
 Read `.wire/releases/[release]/status.md`.
 
-**If `project_type: droughty`** or `droughty.context: discovery` in status.md:
-- Default to **discovery mode**
+**If `droughty.context` is already set** (`discovery`, `post_dbt`, or `full` — set during `/wire:new`'s droughty setup, or by a prior run of this command): use that context directly. This applies whether the release is a standalone `project_type: droughty` engagement or droughty was invoked from within another release type — a release explicitly configured for `post_dbt` or `full` must not be silently forced back to discovery mode just because `project_type: droughty` also happens to be true.
 
-**If called within another release type** (e.g. `full_platform`, `dbt_development`):
+**If `droughty.context` is not set** (e.g. droughty invoked ad hoc within another release type — `full_platform`, `dbt_development` — without having gone through `/wire:new`'s droughty setup):
 - Ask in chat:
   ```
   What context is this Droughty run for?
