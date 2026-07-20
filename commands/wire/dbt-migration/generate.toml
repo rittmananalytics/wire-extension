@@ -40,7 +40,7 @@ Run the following as a **single** Bash command, exactly as written. It:
 Do not split it, do not inspect its output, and proceed immediately to the Workflow Specification. If any part fails (no network, no `curl`, no `python3`), it silently does nothing — telemetry must never block or fail the workflow.
 
 ```bash
-[ "${WIRE_TELEMETRY:-true}" = "false" ] || ( mkdir -p ~/.wire; if [ ! -f ~/.wire/telemetry_id ]; then WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]'); echo "$WIRE_UID" > ~/.wire/telemetry_id; curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"traits\":{\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"os\":\"$(uname -s)\",\"plugin_version\":\"3.10.11\",\"first_seen\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}" > /dev/null 2>&1; fi; WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo unknown); curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"dbt-migration-generate\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"3.10.11\",\"os\":\"$(uname -s)\",\"runtime\":\"gemini\",\"autopilot\":\"false\"}}" > /dev/null 2>&1 ) > /dev/null 2>&1 &
+[ "${WIRE_TELEMETRY:-true}" = "false" ] || ( mkdir -p ~/.wire; if [ ! -f ~/.wire/telemetry_id ]; then WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]'); echo "$WIRE_UID" > ~/.wire/telemetry_id; curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"traits\":{\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"os\":\"$(uname -s)\",\"plugin_version\":\"3.10.12\",\"first_seen\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}" > /dev/null 2>&1; fi; WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo unknown); curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"dbt-migration-generate\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"3.10.12\",\"os\":\"$(uname -s)\",\"runtime\":\"gemini\",\"autopilot\":\"false\"}}" > /dev/null 2>&1 ) > /dev/null 2>&1 &
 ```
 
 ## Rules
@@ -219,6 +219,12 @@ If `--target-dataset <name>` was supplied: set `migration.target_schema` in the 
 If `--dbt-project-path <path>` was supplied: set `migration.dbt_project_path` in the in-memory overlay to `<path>`, overwriting whatever `--config` set for that key (if any).
 
 If none of `--config`/`--tag-map`/`--target-dataset`/`--dbt-project-path` were supplied, skip this step; every field resolves from status.md exactly as today.
+
+### Step 0d: Deployment warehouse type pre-flight
+
+Before the per-model loop, establish the **deployment** warehouse's column types so the loop's Check B (Step 3.5) validates against them, not against a scratch/sample/playground validation warehouse whose types differ. Run `specs/utils/deployment_type_preflight.md` for the in-scope models: it reads the deployment warehouse's actual column types (from `migration.deployment_project` in status.md if set, else the prod-like target in `profiles.yml` — never the validation warehouse), loads the pair's **"Deployment type-divergence patterns"** section, and returns per-model divergence findings plus an explicit warning when the validation warehouse and the deployment warehouse differ.
+
+Hold the returned deployment types and findings in memory for the loop. When the validation and deployment warehouses are the same warehouse, this is a no-op beyond recording "no type-drift risk". Skip only if no target/deployment warehouse is reachable at all — in which case Step 3.5 Check B runs against whatever it can and the batch summary records that the deployment type pre-flight could not run (a coverage gap, not a silent pass).
 
 ### Step 1: Determine scope
 
@@ -497,9 +503,9 @@ PASS: `|source_count - target_count| / source_count ≤ 0.005`
 FAIL: count outside tolerance — record source count, target count, and deviation.
 
 **Check B — Schema**:
-Compare column names, data types (per `type_mapping.md`), and nullability between source and target by querying `INFORMATION_SCHEMA.COLUMNS` on both platforms.
-PASS: all columns present with expected types (modulo documented type translations).
-FAIL: missing columns, extra columns, unexpected type changes, or nullability mismatches — record the specific column differences.
+Compare column names, data types (per `type_mapping.md`), and nullability between source and target by querying `INFORMATION_SCHEMA.COLUMNS` on both platforms. Use the **deployment** warehouse types established in Step 0d as the target side wherever the validation warehouse differs from deployment — a schema check against a scratch warehouse's types passes while the deployment warehouse's types would fail. Apply the pair's "Deployment type-divergence patterns" (Step 0d) against the translated SQL and the deployment column types: any firing pattern (a `TIMESTAMP()` wrap on an already-typed column, a JSON function on a STRING/JSON-mismatched column, an implicit cross-type join coercion) is a Check B FAIL feeding the 3.1 auto-fix loop, not a silent pass.
+PASS: all columns present with expected types (modulo documented type translations) and no deployment type-divergence pattern fires.
+FAIL: missing columns, extra columns, unexpected type changes, nullability mismatches, or a fired deployment type-divergence pattern — record the specific column differences and the deployment column type.
 
 **Check C — Column value sampling** (1000 rows):
 For a deterministic 1000-row sample (e.g. `ORDER BY 1 LIMIT 1000` or `TABLESAMPLE`), compare:
