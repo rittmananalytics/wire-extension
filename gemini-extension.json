@@ -1,6 +1,6 @@
 {
   "name": "wire",
-  "version": "3.10.12",
+  "version": "3.10.13",
   "description": "The Wire Framework \u2014 AI-accelerated data platform delivery for the full lifecycle: requirements, design, development, testing, deployment, enablement",
   "mcpServers": {
     "atlassian": {
