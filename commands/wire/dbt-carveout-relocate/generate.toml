@@ -40,7 +40,7 @@ Run the following as a **single** Bash command, exactly as written. It:
 Do not split it, do not inspect its output, and proceed immediately to the Workflow Specification. If any part fails (no network, no `curl`, no `python3`), it silently does nothing — telemetry must never block or fail the workflow.
 
 ```bash
-[ "${WIRE_TELEMETRY:-true}" = "false" ] || ( mkdir -p ~/.wire; if [ ! -f ~/.wire/telemetry_id ]; then WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]'); echo "$WIRE_UID" > ~/.wire/telemetry_id; curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"traits\":{\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"os\":\"$(uname -s)\",\"plugin_version\":\"3.11.0\",\"first_seen\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}" > /dev/null 2>&1; fi; WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo unknown); curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"dbt-carveout-relocate-generate\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"3.11.0\",\"os\":\"$(uname -s)\",\"runtime\":\"gemini\",\"autopilot\":\"false\"}}" > /dev/null 2>&1 ) > /dev/null 2>&1 &
+[ "${WIRE_TELEMETRY:-true}" = "false" ] || ( mkdir -p ~/.wire; if [ ! -f ~/.wire/telemetry_id ]; then WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]'); echo "$WIRE_UID" > ~/.wire/telemetry_id; curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"traits\":{\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"os\":\"$(uname -s)\",\"plugin_version\":\"3.11.1\",\"first_seen\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}" > /dev/null 2>&1; fi; WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo unknown); curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"dbt-carveout-relocate-generate\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"3.11.1\",\"os\":\"$(uname -s)\",\"runtime\":\"gemini\",\"autopilot\":\"false\"}}" > /dev/null 2>&1 ) > /dev/null 2>&1 &
 ```
 
 ## Rules
@@ -205,6 +205,10 @@ artifacts:
     waves_complete: ["B01"]   # set only when run with --wave; accumulates across runs
 ```
 
+### Step 6b: Update the migration register (v3.11.1)
+
+For every successfully relocated model, upsert its row in `migration/migration_register.csv` exactly as `dbt-migration-generate` does: `source_path`, `source_layer`, `last_migrated_commit` (the parent-release source snapshot SHA the relocated file was taken from), `bq_target` (the tenant project relation), `state: migrated` (`failed` on a compile failure; a `manual_review_required` predicate injection stays `pending` until resolved). Record `origin: relocate` in `notes` — the ship-and-verify pipeline reads this to pick the relocate-mode comparator (`equivalency-validate`, Relocate-mode comparison). Without these rows, relocated models are invisible to `dbt-migration-batch-raise` candidate derivation and to the delivery stage ladder. Skip silently if the register doesn't exist.
+
 ### Step 7: Output summary
 
 Print a per-model results table (model, bucket, predicate_injection state, compile result), then:
@@ -212,6 +216,10 @@ Print a per-model results table (model, bucket, predicate_injection state, compi
 ```
 /wire:dbt-carveout-relocate-validate $ARGUMENTS --target-dbt-project-path <path>
 ```
+
+### Step 8: Chain the downstream gates (v3.11.1; `--no-chain` opts out)
+
+Unless `--no-chain` was passed, run the same gate chain `dbt-migration-generate` runs over its scope, against the relocated set: `dbt-carveout-relocate-validate`, then `dbt-migration-lint`, `dbt-migration-fix`, and `dbt-migration-pre-pr-review` scoped to the relocated models. A relocate run then leaves the gates already applied rather than stopping at a next-step suggestion, and its models arrive at `dbt-migration-batch-raise` eligibility with rule 2 (gates clean) already satisfiable.
 
 ## Output Files
 
