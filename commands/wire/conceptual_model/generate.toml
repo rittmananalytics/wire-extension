@@ -41,7 +41,7 @@ Run the following as a **single** Bash command, exactly as written. It:
 Do not split it, do not inspect its output, and proceed immediately to the Workflow Specification. If any part fails (no network, no `curl`, no `python3`), it silently does nothing — telemetry must never block or fail the workflow.
 
 ```bash
-[ "${WIRE_TELEMETRY:-true}" = "false" ] || ( mkdir -p ~/.wire; if [ ! -f ~/.wire/telemetry_id ]; then WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]'); echo "$WIRE_UID" > ~/.wire/telemetry_id; curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"traits\":{\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"os\":\"$(uname -s)\",\"plugin_version\":\"3.11.7\",\"first_seen\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}" > /dev/null 2>&1; fi; WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo unknown); curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"conceptual_model-generate\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"3.11.7\",\"os\":\"$(uname -s)\",\"runtime\":\"gemini\",\"autopilot\":\"false\"}}" > /dev/null 2>&1 ) > /dev/null 2>&1 &
+[ "${WIRE_TELEMETRY:-true}" = "false" ] || ( mkdir -p ~/.wire; if [ ! -f ~/.wire/telemetry_id ]; then WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]'); echo "$WIRE_UID" > ~/.wire/telemetry_id; curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"traits\":{\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"os\":\"$(uname -s)\",\"plugin_version\":\"3.11.8\",\"first_seen\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}" > /dev/null 2>&1; fi; WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo unknown); curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"conceptual_model-generate\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"3.11.8\",\"os\":\"$(uname -s)\",\"runtime\":\"gemini\",\"autopilot\":\"false\"}}" > /dev/null 2>&1 ) > /dev/null 2>&1 &
 ```
 
 ## Rules
@@ -123,6 +123,8 @@ Flag any relationships that are ambiguous or require business clarification — 
 
 ### Step 4: Generate Conceptual Model Document
 
+Apply the reference-legibility convention (`specs/utils/reference_legibility.md`): wherever the document cites a functional requirement code (FR-n) from the requirements specification, pair it with the requirement's plain-language name at first mention and resolve it in the Reference key section at the end of the template.
+
 Write to `.wire/<project_id>/design/conceptual_model.md`:
 
 ```markdown
@@ -177,6 +179,16 @@ erDiagram
 | OQ-1 | [Entity boundary or relationship that needs business clarification] | [What design decision this blocks] |
 
 [Leave empty if no open questions]
+
+## Reference key
+
+Codes used in this document that are defined in other artifacts:
+
+| Code | Meaning | Defined in |
+|------|---------|------------|
+| FR-[n] | [requirement plain-language name] | requirements/requirements_specification.md |
+
+[Omit this section if the document cites no codes defined elsewhere]
 ```
 
 ### Step 5: Update Status
@@ -372,7 +384,12 @@ Immediately after appending a **command** row (this does not apply to skill acti
    ⚠ status.md still shows `<field>: TBD` for `<artifact_id>` despite review: pass — status may be stale
    ```
    Emit one warning per stale field — do not suppress after the first.
-6. If no stale fields are found, the review/approval gate has not yet passed, or `artifact_id` could not be derived: no output, proceed silently.
+6. After the last warning (only when at least one was emitted), add one closing line offering the repair path:
+   ```
+   Run /wire:status-sync <release-folder> to reconcile the record (see specs/utils/status_sync.md).
+   ```
+   The offer is informational only — never block the calling command and never run the sync automatically.
+7. If no stale fields are found, the review/approval gate has not yet passed, or `artifact_id` could not be derived: no output, proceed silently.
 
 This check is self-contained within this utility, so every caller gets it automatically without any caller-side changes.
 
