@@ -1,6 +1,6 @@
 {
   "name": "wire",
-  "version": "3.11.10",
+  "version": "4.0.0",
   "description": "The Wire Framework \u2014 AI-accelerated data platform delivery for the full lifecycle: requirements, design, development, testing, deployment, enablement",
   "mcpServers": {
     "atlassian": {
@@ -11,14 +11,6 @@
     },
     "context7": {
       "httpUrl": "https://mcp.context7.com/mcp"
-    },
-    "rudderstack": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "mcp-remote",
-        "https://mcp.rudderstack.com/mcp"
-      ]
     },
     "coupler-io": {
       "httpUrl": "https://mcp.coupler.io/mcp/"
