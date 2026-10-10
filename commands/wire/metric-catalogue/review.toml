@@ -1,6 +1,6 @@
-description = "Client ruling on the metric catalogue: one agreed definition and name per metric"
+description = "Experimental: Client ruling on the metric catalogue: one agreed definition and name per metric"
 prompt = """
-# Client ruling on the metric catalogue: one agreed definition and name per metric
+# Experimental: Client ruling on the metric catalogue: one agreed definition and name per metric
 
 ## User Input (<release-folder>)
 
@@ -41,7 +41,7 @@ Run the following as a **single** Bash command, exactly as written. It:
 Do not split it, do not inspect its output, and proceed immediately to the Workflow Specification. If any part fails (no network, no `curl`, no `python3`), it silently does nothing — telemetry must never block or fail the workflow.
 
 ```bash
-WIRE_INVOKED_BY_VALUE="${WIRE_INVOKED_BY:-typed}"; [ "${WIRE_TELEMETRY:-true}" = "false" ] || ( mkdir -p ~/.wire; if [ ! -f ~/.wire/telemetry_id ]; then WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]'); echo "$WIRE_UID" > ~/.wire/telemetry_id; curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"traits\":{\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"os\":\"$(uname -s)\",\"plugin_version\":\"4.2.2\",\"first_seen\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}" > /dev/null 2>&1; fi; WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo unknown); curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"metric-catalogue-review\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"4.2.2\",\"os\":\"$(uname -s)\",\"runtime\":\"gemini\",\"invoked_by\":\"$WIRE_INVOKED_BY_VALUE\"}}" > /dev/null 2>&1 ) > /dev/null 2>&1 &
+WIRE_INVOKED_BY_VALUE="${WIRE_INVOKED_BY:-typed}"; [ "${WIRE_TELEMETRY:-true}" = "false" ] || ( mkdir -p ~/.wire; if [ ! -f ~/.wire/telemetry_id ]; then WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]'); echo "$WIRE_UID" > ~/.wire/telemetry_id; curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"traits\":{\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"os\":\"$(uname -s)\",\"plugin_version\":\"4.2.3\",\"first_seen\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}" > /dev/null 2>&1; fi; WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo unknown); curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"metric-catalogue-review\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"4.2.3\",\"os\":\"$(uname -s)\",\"runtime\":\"gemini\",\"invoked_by\":\"$WIRE_INVOKED_BY_VALUE\"}}" > /dev/null 2>&1 ) > /dev/null 2>&1 &
 ```
 
 ## The `invoked_by` property
@@ -216,7 +216,7 @@ preconditions:
     outcome: PASS
 delegates_to:
   - utils/precondition_gate
-description: "Client ruling on the metric catalogue: one agreed definition and name per metric, recorded as decisions the Omni model implements"
+description: "Experimental: Client ruling on the metric catalogue: one agreed definition and name per metric, recorded as decisions the Omni model implements"
 argument-hint: <release-folder>
 
 ---
@@ -230,6 +230,8 @@ Follow `specs/utils/precondition_gate.md` before proceeding.
 # Metric Catalogue: Review
 
 ## Purpose
+
+> **Experimental.** The `looker_studio_to_omni` pair is experimental in 4.2.2. It reads undocumented Looker Studio endpoints and has not yet been run end to end into Omni on a client estate. At the start of every run of this command, tell the consultant this in one sentence, and record `experimental: true` against this artifact in `status.md`. Do not present its output to a client as final without the consultant's review.
 
 The client's ruling on what each metric means. This is the gate that turns report-level definitions into one agreed set. The person ruling is the owner of the definitions (often a head of marketing or finance), not only the consultant. Under the release director model the orchestrating session presents each conflict as a ruling and records the outcome.
 

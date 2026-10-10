@@ -1,6 +1,6 @@
-description = "Validate the Looker Studio audit: every report captured, every object classified, gaps and access requests listed, captures git-ignored"
+description = "Experimental: Validate the Looker Studio audit: every report captured, every object classified, gaps and access requests listed, captures git-ignored"
 prompt = """
-# Validate the Looker Studio audit: every report captured, every object classified, gaps and access requests listed, captures git-ignored
+# Experimental: Validate the Looker Studio audit: every report captured, every object classified, gaps and access requests listed, captures git-ignored
 
 ## User Input (<release-folder>)
 
@@ -41,7 +41,7 @@ Run the following as a **single** Bash command, exactly as written. It:
 Do not split it, do not inspect its output, and proceed immediately to the Workflow Specification. If any part fails (no network, no `curl`, no `python3`), it silently does nothing — telemetry must never block or fail the workflow.
 
 ```bash
-WIRE_INVOKED_BY_VALUE="${WIRE_INVOKED_BY:-typed}"; [ "${WIRE_TELEMETRY:-true}" = "false" ] || ( mkdir -p ~/.wire; if [ ! -f ~/.wire/telemetry_id ]; then WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]'); echo "$WIRE_UID" > ~/.wire/telemetry_id; curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"traits\":{\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"os\":\"$(uname -s)\",\"plugin_version\":\"4.2.2\",\"first_seen\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}" > /dev/null 2>&1; fi; WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo unknown); curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"looker-studio-audit-validate\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"4.2.2\",\"os\":\"$(uname -s)\",\"runtime\":\"gemini\",\"invoked_by\":\"$WIRE_INVOKED_BY_VALUE\"}}" > /dev/null 2>&1 ) > /dev/null 2>&1 &
+WIRE_INVOKED_BY_VALUE="${WIRE_INVOKED_BY:-typed}"; [ "${WIRE_TELEMETRY:-true}" = "false" ] || ( mkdir -p ~/.wire; if [ ! -f ~/.wire/telemetry_id ]; then WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]'); echo "$WIRE_UID" > ~/.wire/telemetry_id; curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"traits\":{\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"os\":\"$(uname -s)\",\"plugin_version\":\"4.2.3\",\"first_seen\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}" > /dev/null 2>&1; fi; WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo unknown); curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"looker-studio-audit-validate\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"4.2.3\",\"os\":\"$(uname -s)\",\"runtime\":\"gemini\",\"invoked_by\":\"$WIRE_INVOKED_BY_VALUE\"}}" > /dev/null 2>&1 ) > /dev/null 2>&1 &
 ```
 
 ## The `invoked_by` property
@@ -211,7 +211,7 @@ preconditions:
     outcome: complete
 delegates_to:
   - utils/precondition_gate
-description: "Validate the Looker Studio audit: every report captured and extracted, every component and data source classified, gaps and access requests listed, captures git-ignored, no secrets committed, counts match status.md"
+description: "Experimental: Validate the Looker Studio audit: every report captured and extracted, every component and data source classified, gaps and access requests listed, captures git-ignored, no secrets committed, counts match status.md"
 argument-hint: <release-folder>
 
 ---
@@ -225,6 +225,8 @@ Follow `specs/utils/precondition_gate.md` before proceeding.
 # Looker Studio Audit: Validate
 
 ## Purpose
+
+> **Experimental.** The `looker_studio_to_omni` pair is experimental in 4.2.2. It reads undocumented Looker Studio endpoints and has not yet been run end to end into Omni on a client estate. At the start of every run of this command, tell the consultant this in one sentence, and record `experimental: true` against this artifact in `status.md`. Do not present its output to a client as final without the consultant's review.
 
 Checks the Looker Studio audit for completeness and safety before the metric catalogue and the plan are built on it. Produces a PASS/FAIL report with the gaps to fix.
 
