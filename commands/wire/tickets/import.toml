@@ -41,7 +41,7 @@ Run the following as a **single** Bash command, exactly as written. It:
 Do not split it, do not inspect its output, and proceed immediately to the Workflow Specification. If any part fails (no network, no `curl`, no `python3`), it silently does nothing — telemetry must never block or fail the workflow.
 
 ```bash
-WIRE_INVOKED_BY_VALUE="${WIRE_INVOKED_BY:-typed}"; WIRE_P="${WIRE_PERSONA:-$(sed -n 's/^persona:[[:space:]]*//p' .wire/local/persona.yml 2>/dev/null | head -1)}"; [ -n "$WIRE_P" ] || WIRE_P="$(awk -v e="$(git config --get user.email 2>/dev/null | tr '[:upper:]' '[:lower:]')" '/^[[:space:]]*-[[:space:]]+name:/{m=0} /@/{n=split(tolower($0),f,/[][, \t"'"'"']+/); for(i=1;i<=n;i++) if(e!="" && f[i]==e) m=1} /^[[:space:]]+persona:/{if(m){sub(/^[[:space:]]+persona:[[:space:]]*/,""); print; exit}}' .wire/engagement/team.yml 2>/dev/null)"; WIRE_PERSONA_VALUE="$(printf '%s' "$WIRE_P" | tr -cd 'a-z-')"; [ "${WIRE_TELEMETRY:-true}" = "false" ] || ( mkdir -p ~/.wire; if [ ! -f ~/.wire/telemetry_id ]; then WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]'); echo "$WIRE_UID" > ~/.wire/telemetry_id; curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"traits\":{\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"os\":\"$(uname -s)\",\"plugin_version\":\"4.4.1\",\"first_seen\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}" > /dev/null 2>&1; fi; WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo unknown); curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"tickets-import\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"4.4.1\",\"os\":\"$(uname -s)\",\"runtime\":\"gemini\",\"invoked_by\":\"$WIRE_INVOKED_BY_VALUE\",\"persona\":\"$WIRE_PERSONA_VALUE\"}}" > /dev/null 2>&1 ) > /dev/null 2>&1 &
+WIRE_INVOKED_BY_VALUE="${WIRE_INVOKED_BY:-typed}"; WIRE_P="${WIRE_PERSONA:-$(sed -n 's/^persona:[[:space:]]*//p' .wire/local/persona.yml 2>/dev/null | head -1)}"; [ -n "$WIRE_P" ] || WIRE_P="$(awk -v e="$(git config --get user.email 2>/dev/null | tr '[:upper:]' '[:lower:]')" '/^[[:space:]]*-[[:space:]]+name:/{m=0} /@/{n=split(tolower($0),f,/[][, \t"'"'"']+/); for(i=1;i<=n;i++) if(e!="" && f[i]==e) m=1} /^[[:space:]]+persona:/{if(m){sub(/^[[:space:]]+persona:[[:space:]]*/,""); print; exit}}' .wire/engagement/team.yml 2>/dev/null)"; WIRE_PERSONA_VALUE="$(printf '%s' "$WIRE_P" | tr -cd 'a-z-')"; [ "${WIRE_TELEMETRY:-true}" = "false" ] || ( mkdir -p ~/.wire; if [ ! -f ~/.wire/telemetry_id ]; then WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]'); echo "$WIRE_UID" > ~/.wire/telemetry_id; curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"traits\":{\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"os\":\"$(uname -s)\",\"plugin_version\":\"4.4.2\",\"first_seen\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}" > /dev/null 2>&1; fi; WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo unknown); curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"tickets-import\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"4.4.2\",\"os\":\"$(uname -s)\",\"runtime\":\"gemini\",\"invoked_by\":\"$WIRE_INVOKED_BY_VALUE\",\"persona\":\"$WIRE_PERSONA_VALUE\"}}" > /dev/null 2>&1 ) > /dev/null 2>&1 &
 ```
 
 ## The `invoked_by` property
@@ -306,7 +306,16 @@ Without `model_source: modality`, skip this step. Nothing needs Modality.
 
 ### Step 4: Propose kind, slices and steps
 
-For each ticket, from its title and text:
+A ticket whose description has both a `Kind:` line and a `Wire step:` line
+states its kind and Wire steps (tickets written from a ticket template; plain
+work says `Wire step: none`). Read those lines instead of proposing them: put
+the ticket's description in the proposals file as `description`, and the
+script uses the stated kind and steps and marks the entry
+`kind_source: ticket`. The slice is still proposed as below. A ticket without
+both lines, which is every ticket a person writes, takes the proposal route
+unchanged.
+
+For each other ticket, from its title and text:
 
 1. Propose the **kind** (`specs/utils/ticket_delivery.md`, "Ticket kinds").
 2. Propose the **slice** and its kind. With a Modality link, the slice is the
@@ -324,7 +333,7 @@ Write these proposals to a JSON file in the release's scratch area and run:
 python3 <wire>/scripts/ticket_delivery.py propose <proposals.json>
 ```
 
-The script applies the recipes, uses Modality links over proposals, drops
+The script reads stated kinds and steps, applies the recipes, uses Modality links over proposals, drops
 `data_model` from build tickets whose slice a design ticket covers, marks
 every proposal that needs checking, lists plain work and lists tickets in
 tracker projects that are not this release's. Use its output as the proposal;
