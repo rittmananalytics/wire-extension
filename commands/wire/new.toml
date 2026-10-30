@@ -41,7 +41,7 @@ Run the following as a **single** Bash command, exactly as written. It:
 Do not split it, do not inspect its output, and proceed immediately to the Workflow Specification. If any part fails (no network, no `curl`, no `python3`), it silently does nothing — telemetry must never block or fail the workflow.
 
 ```bash
-WIRE_INVOKED_BY_VALUE="${WIRE_INVOKED_BY:-typed}"; WIRE_P="${WIRE_PERSONA:-$(sed -n 's/^persona:[[:space:]]*//p' .wire/local/persona.yml 2>/dev/null | head -1)}"; [ -n "$WIRE_P" ] || WIRE_P="$(awk -v e="$(git config --get user.email 2>/dev/null | tr '[:upper:]' '[:lower:]')" '/^[[:space:]]*-[[:space:]]+name:/{m=0} /@/{n=split(tolower($0),f,/[][, \t"'"'"']+/); for(i=1;i<=n;i++) if(e!="" && f[i]==e) m=1} /^[[:space:]]+persona:/{if(m){sub(/^[[:space:]]+persona:[[:space:]]*/,""); print; exit}}' .wire/engagement/team.yml 2>/dev/null)"; WIRE_PERSONA_VALUE="$(printf '%s' "$WIRE_P" | tr -cd 'a-z-')"; [ "${WIRE_TELEMETRY:-true}" = "false" ] || ( mkdir -p ~/.wire; if [ ! -f ~/.wire/telemetry_id ]; then WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]'); echo "$WIRE_UID" > ~/.wire/telemetry_id; curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"traits\":{\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"os\":\"$(uname -s)\",\"plugin_version\":\"4.4.4\",\"first_seen\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}" > /dev/null 2>&1; fi; WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo unknown); curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"new\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"4.4.4\",\"os\":\"$(uname -s)\",\"runtime\":\"gemini\",\"invoked_by\":\"$WIRE_INVOKED_BY_VALUE\",\"persona\":\"$WIRE_PERSONA_VALUE\"}}" > /dev/null 2>&1 ) > /dev/null 2>&1 &
+WIRE_INVOKED_BY_VALUE="${WIRE_INVOKED_BY:-typed}"; WIRE_P="${WIRE_PERSONA:-$(sed -n 's/^persona:[[:space:]]*//p' .wire/local/persona.yml 2>/dev/null | head -1)}"; [ -n "$WIRE_P" ] || WIRE_P="$(awk -v e="$(git config --get user.email 2>/dev/null | tr '[:upper:]' '[:lower:]')" '/^[[:space:]]*-[[:space:]]+name:/{m=0} /@/{n=split(tolower($0),f,/[][, \t"'"'"']+/); for(i=1;i<=n;i++) if(e!="" && f[i]==e) m=1} /^[[:space:]]+persona:/{if(m){sub(/^[[:space:]]+persona:[[:space:]]*/,""); print; exit}}' .wire/engagement/team.yml 2>/dev/null)"; WIRE_PERSONA_VALUE="$(printf '%s' "$WIRE_P" | tr -cd 'a-z-')"; [ "${WIRE_TELEMETRY:-true}" = "false" ] || ( mkdir -p ~/.wire; if [ ! -f ~/.wire/telemetry_id ]; then WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]'); echo "$WIRE_UID" > ~/.wire/telemetry_id; curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"traits\":{\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"os\":\"$(uname -s)\",\"plugin_version\":\"4.4.5\",\"first_seen\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}" > /dev/null 2>&1; fi; WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo unknown); curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"new\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"4.4.5\",\"os\":\"$(uname -s)\",\"runtime\":\"gemini\",\"invoked_by\":\"$WIRE_INVOKED_BY_VALUE\",\"persona\":\"$WIRE_PERSONA_VALUE\"}}" > /dev/null 2>&1 ) > /dev/null 2>&1 &
 ```
 
 ## The `invoked_by` property
@@ -800,6 +800,12 @@ touch .wire/engagement/org/.gitkeep
 touch .wire/research/sessions/.gitkeep
 ```
 
+Make sure `.wire/local/` is git-ignored. It holds each person's own settings (persona override, where their clones of related repos are; `specs/utils/personas.md`, `specs/utils/repos.md`) and is never committed:
+
+```bash
+grep -qxF '.wire/local/' .gitignore 2>/dev/null || echo '.wire/local/' >> .gitignore
+```
+
 ### Step 10.5: Scaffold GitHub PR Template
 
 Create `.github/pull_request_template.md` from the Wire PR template so that every PR raised against this repo is Wire-aware by default.
@@ -824,6 +830,8 @@ Read `TEMPLATES/engagement-context-template.md` and populate:
 - `{{FATHOM_SYNC_CLIENT_DOMAIN}}` → the client domain as a quoted string, or `null` (literal, unquoted) if not set — resolved in Step 2
 
 If repo mode is `dedicated_delivery`, populate the `client_repo` section with the provided URL, local path, and branch.
+
+Leave `related_repos` as the template's commented example. If the person mentioned other client repositories (an Airflow repo, a LookML repo), say they can be listed afterwards with `/wire:utils-repos add`, for read only lookups.
 
 Write to `.wire/engagement/context.md`.
 

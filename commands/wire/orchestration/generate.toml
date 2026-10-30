@@ -41,7 +41,7 @@ Run the following as a **single** Bash command, exactly as written. It:
 Do not split it, do not inspect its output, and proceed immediately to the Workflow Specification. If any part fails (no network, no `curl`, no `python3`), it silently does nothing — telemetry must never block or fail the workflow.
 
 ```bash
-WIRE_INVOKED_BY_VALUE="${WIRE_INVOKED_BY:-typed}"; WIRE_P="${WIRE_PERSONA:-$(sed -n 's/^persona:[[:space:]]*//p' .wire/local/persona.yml 2>/dev/null | head -1)}"; [ -n "$WIRE_P" ] || WIRE_P="$(awk -v e="$(git config --get user.email 2>/dev/null | tr '[:upper:]' '[:lower:]')" '/^[[:space:]]*-[[:space:]]+name:/{m=0} /@/{n=split(tolower($0),f,/[][, \t"'"'"']+/); for(i=1;i<=n;i++) if(e!="" && f[i]==e) m=1} /^[[:space:]]+persona:/{if(m){sub(/^[[:space:]]+persona:[[:space:]]*/,""); print; exit}}' .wire/engagement/team.yml 2>/dev/null)"; WIRE_PERSONA_VALUE="$(printf '%s' "$WIRE_P" | tr -cd 'a-z-')"; [ "${WIRE_TELEMETRY:-true}" = "false" ] || ( mkdir -p ~/.wire; if [ ! -f ~/.wire/telemetry_id ]; then WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]'); echo "$WIRE_UID" > ~/.wire/telemetry_id; curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"traits\":{\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"os\":\"$(uname -s)\",\"plugin_version\":\"4.4.4\",\"first_seen\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}" > /dev/null 2>&1; fi; WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo unknown); curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"orchestration-generate\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"4.4.4\",\"os\":\"$(uname -s)\",\"runtime\":\"gemini\",\"invoked_by\":\"$WIRE_INVOKED_BY_VALUE\",\"persona\":\"$WIRE_PERSONA_VALUE\"}}" > /dev/null 2>&1 ) > /dev/null 2>&1 &
+WIRE_INVOKED_BY_VALUE="${WIRE_INVOKED_BY:-typed}"; WIRE_P="${WIRE_PERSONA:-$(sed -n 's/^persona:[[:space:]]*//p' .wire/local/persona.yml 2>/dev/null | head -1)}"; [ -n "$WIRE_P" ] || WIRE_P="$(awk -v e="$(git config --get user.email 2>/dev/null | tr '[:upper:]' '[:lower:]')" '/^[[:space:]]*-[[:space:]]+name:/{m=0} /@/{n=split(tolower($0),f,/[][, \t"'"'"']+/); for(i=1;i<=n;i++) if(e!="" && f[i]==e) m=1} /^[[:space:]]+persona:/{if(m){sub(/^[[:space:]]+persona:[[:space:]]*/,""); print; exit}}' .wire/engagement/team.yml 2>/dev/null)"; WIRE_PERSONA_VALUE="$(printf '%s' "$WIRE_P" | tr -cd 'a-z-')"; [ "${WIRE_TELEMETRY:-true}" = "false" ] || ( mkdir -p ~/.wire; if [ ! -f ~/.wire/telemetry_id ]; then WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]'); echo "$WIRE_UID" > ~/.wire/telemetry_id; curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"traits\":{\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"os\":\"$(uname -s)\",\"plugin_version\":\"4.4.5\",\"first_seen\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}" > /dev/null 2>&1; fi; WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo unknown); curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"orchestration-generate\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"4.4.5\",\"os\":\"$(uname -s)\",\"runtime\":\"gemini\",\"invoked_by\":\"$WIRE_INVOKED_BY_VALUE\",\"persona\":\"$WIRE_PERSONA_VALUE\"}}" > /dev/null 2>&1 ) > /dev/null 2>&1 &
 ```
 
 ## The `invoked_by` property
@@ -648,6 +648,20 @@ DBT_CLOUD_ENVIRONMENT_ID_DEV=
 
 ### Step 3c: Generate Airflow Orchestration (if Airflow chosen)
 
+#### 3c.0: Existing Airflow estate mode
+
+Use this mode instead of 3c.1 to 3c.4 when the client already runs Airflow: the repo has a DAG folder with DAG files, or `.wire/engagement/airflow_environments.yml` exists (schema in `wire/schemas/airflow-environments-schema.md`). Record `orchestration_mode: existing_airflow_estate` under `artifacts.orchestration` in status.md.
+
+1. Activate the Airflow skill (`skills/airflow/SKILL.md`; on Gemini CLI, read the file and follow it). Read every environment value from the environment file; stop if it is missing.
+2. Change only what the scope names: a schedule, a trigger, a dependency between DAGs (dataset, sensor or `TriggerDagRunOperator`), or a DAG that runs dbt. Do not scaffold a new pipeline DAG, and do not rewrite DAGs the scope does not name.
+3. Schedules and caps come from the repo's per-environment config, not literals (rules AF-003 and AF-005). A new dependency between DAGs uses a dataset or a sensor in `reschedule` mode (AF-103).
+4. Run the lint on the changed files before trusting the change:
+   ```bash
+   python3 <wire>/scripts/lint_conventions.py --domain airflow \
+     --convention <resolved airflow.yml> --path <dag folder> --changed-from <base branch>
+   ```
+5. Write `.wire/<project_id>/development/orchestration/airflow_setup.md` as a change note: the DAGs changed, the schedule before and after, the dependencies added or removed, the lint result, and the next steps (`/wire:utils-dev-deploy`, then `/wire:utils-dev-test-evidence`). Skip 3c.1 to 3c.4 and go to Step 4.
+
 #### 3c.1 — Scaffold DAG file
 
 Create `dags/<project_name>_pipeline.py` at the repo root (or inside an existing `dags/` directory if one is present). The DAG uses the Astronomer Cosmos `DbtTaskGroup` pattern to wrap all dbt models as Airflow tasks, preserving the dbt dependency graph.
@@ -811,7 +825,8 @@ Read `.wire/<project_id>/status.md` and update the `orchestration` artifact sect
 
 ```yaml
 orchestration:
-  orchestration_tool: "dagster"  # or "dbt_cloud"
+  orchestration_tool: "dagster"  # or "dbt_cloud", "airflow"
+  orchestration_mode: new        # or existing_airflow_estate (Step 3c.0)
   generate: complete
   validate: not_started
   review: not_started
