@@ -41,7 +41,7 @@ Run the following as a **single** Bash command, exactly as written. It:
 Do not split it, do not inspect its output, and proceed immediately to the Workflow Specification. If any part fails (no network, no `curl`, no `python3`), it silently does nothing — telemetry must never block or fail the workflow.
 
 ```bash
-WIRE_INVOKED_BY_VALUE="${WIRE_INVOKED_BY:-typed}"; WIRE_P="${WIRE_PERSONA:-$(sed -n 's/^persona:[[:space:]]*//p' .wire/local/persona.yml 2>/dev/null | head -1)}"; [ -n "$WIRE_P" ] || WIRE_P="$(awk -v e="$(git config --get user.email 2>/dev/null | tr '[:upper:]' '[:lower:]')" '/^[[:space:]]*-[[:space:]]+name:/{m=0} /@/{n=split(tolower($0),f,/[][, \t"'"'"']+/); for(i=1;i<=n;i++) if(e!="" && f[i]==e) m=1} /^[[:space:]]+persona:/{if(m){sub(/^[[:space:]]+persona:[[:space:]]*/,""); print; exit}}' .wire/engagement/team.yml 2>/dev/null)"; WIRE_PERSONA_VALUE="$(printf '%s' "$WIRE_P" | tr -cd 'a-z-')"; [ "${WIRE_TELEMETRY:-true}" = "false" ] || ( mkdir -p ~/.wire; if [ ! -f ~/.wire/telemetry_id ]; then WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]'); echo "$WIRE_UID" > ~/.wire/telemetry_id; curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"traits\":{\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"os\":\"$(uname -s)\",\"plugin_version\":\"4.5.1\",\"first_seen\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}" > /dev/null 2>&1; fi; WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo unknown); curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"upgrade\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"4.5.1\",\"os\":\"$(uname -s)\",\"runtime\":\"gemini\",\"invoked_by\":\"$WIRE_INVOKED_BY_VALUE\",\"persona\":\"$WIRE_PERSONA_VALUE\"}}" > /dev/null 2>&1 ) > /dev/null 2>&1 &
+WIRE_INVOKED_BY_VALUE="${WIRE_INVOKED_BY:-typed}"; WIRE_P="${WIRE_PERSONA:-$(sed -n 's/^persona:[[:space:]]*//p' .wire/local/persona.yml 2>/dev/null | head -1)}"; [ -n "$WIRE_P" ] || WIRE_P="$(awk -v e="$(git config --get user.email 2>/dev/null | tr '[:upper:]' '[:lower:]')" '/^[[:space:]]*-[[:space:]]+name:/{m=0} /@/{n=split(tolower($0),f,/[][, \t"'"'"']+/); for(i=1;i<=n;i++) if(e!="" && f[i]==e) m=1} /^[[:space:]]+persona:/{if(m){sub(/^[[:space:]]+persona:[[:space:]]*/,""); print; exit}}' .wire/engagement/team.yml 2>/dev/null)"; WIRE_PERSONA_VALUE="$(printf '%s' "$WIRE_P" | tr -cd 'a-z-')"; [ "${WIRE_TELEMETRY:-true}" = "false" ] || ( mkdir -p ~/.wire; if [ ! -f ~/.wire/telemetry_id ]; then WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]'); echo "$WIRE_UID" > ~/.wire/telemetry_id; curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"traits\":{\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"os\":\"$(uname -s)\",\"plugin_version\":\"4.5.2\",\"first_seen\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}" > /dev/null 2>&1; fi; WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo unknown); curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"upgrade\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"4.5.2\",\"os\":\"$(uname -s)\",\"runtime\":\"gemini\",\"invoked_by\":\"$WIRE_INVOKED_BY_VALUE\",\"persona\":\"$WIRE_PERSONA_VALUE\"}}" > /dev/null 2>&1 ) > /dev/null 2>&1 &
 ```
 
 ## The `invoked_by` property
@@ -256,9 +256,21 @@ What it does not do:
 /wire:upgrade 20260210_acme_analytics   # upgrade a specific release folder
 /wire:upgrade                            # auto-detect the most recently modified release
 /wire:upgrade --dry-run 20260210_acme   # show what would change without modifying anything
+/wire:upgrade --from-mod 01-discovery 02-data-foundation
+                                         # queued by the Wire mod: these releases, in order
 ```
 
 `--dry-run` prints the diff as a YAML patch and exits without writing.
+
+`--from-mod` is how the Wire mod (Claude Code, 4.5.2 and later, wire#400)
+queues this command at session start when a release's `wire_plugin_version`
+is older than the plugin or absent: the arguments after the flag are the
+release folders to upgrade, in that order. Step 1's question is skipped; every
+other step runs as typed, including the confirmation before anything is
+written, one release at a time. The mod queues it once per repository per
+plugin version, only in an interactive session on the main loop, and leaves
+out a release another person holds with a live claim; declining here is
+recorded nowhere, and the mod does not ask again until the plugin changes.
 
 ## Prerequisites
 
@@ -274,6 +286,12 @@ What it does not do:
 If a `<release-folder>` argument is provided:
 1. Look for `.wire/releases/<release-folder>/status.md`
 2. If not found, try `.wire/<release-folder>/status.md` (pre-v3.4 flat layout — redirect the user to `/wire:migrate` first)
+
+If `--from-mod` is given, the arguments after it are release folders. Upgrade
+each in the order given, running Steps 2 to 8 for one before starting the
+next, and do not ask which release. A folder that does not exist is reported
+and skipped. With `--from-mod` and no folders, say that nothing was named and
+stop.
 
 If no argument is provided:
 1. Glob `.wire/releases/*/status.md`
