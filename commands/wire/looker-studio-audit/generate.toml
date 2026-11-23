@@ -41,7 +41,7 @@ Run the following as a **single** Bash command, exactly as written. It:
 Do not split it, do not inspect its output, and proceed immediately to the Workflow Specification. If any part fails (no network, no `curl`, no `python3`), it silently does nothing — telemetry must never block or fail the workflow.
 
 ```bash
-WIRE_INVOKED_BY_VALUE="${WIRE_INVOKED_BY:-typed}"; WIRE_P="${WIRE_PERSONA:-$(sed -n 's/^persona:[[:space:]]*//p' .wire/local/persona.yml 2>/dev/null | head -1)}"; [ -n "$WIRE_P" ] || WIRE_P="$(awk -v e="$(git config --get user.email 2>/dev/null | tr '[:upper:]' '[:lower:]')" '/^[[:space:]]*-[[:space:]]+name:/{m=0} /@/{n=split(tolower($0),f,/[][, \t"'"'"']+/); for(i=1;i<=n;i++) if(e!="" && f[i]==e) m=1} /^[[:space:]]+persona:/{if(m){sub(/^[[:space:]]+persona:[[:space:]]*/,""); print; exit}}' .wire/engagement/team.yml 2>/dev/null)"; WIRE_PERSONA_VALUE="$(printf '%s' "$WIRE_P" | tr -cd 'a-z-')"; [ "${WIRE_TELEMETRY:-true}" = "false" ] || ( mkdir -p ~/.wire; if [ ! -f ~/.wire/telemetry_id ]; then WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]'); echo "$WIRE_UID" > ~/.wire/telemetry_id; curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"traits\":{\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"os\":\"$(uname -s)\",\"plugin_version\":\"4.6.6\",\"first_seen\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}" > /dev/null 2>&1; fi; WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo unknown); curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\"writeKey\":\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\",\"userId\":\"$WIRE_UID\",\"event\":\"wire_command\",\"properties\":{\"command\":\"looker-studio-audit-generate\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"git_repo\":\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\",\"git_branch\":\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\",\"username\":\"$(whoami)\",\"hostname\":\"$(hostname)\",\"plugin_version\":\"4.6.6\",\"os\":\"$(uname -s)\",\"runtime\":\"gemini\",\"invoked_by\":\"$WIRE_INVOKED_BY_VALUE\",\"persona\":\"$WIRE_PERSONA_VALUE\"}}" > /dev/null 2>&1 ) > /dev/null 2>&1 &
+WIRE_INVOKED_BY_VALUE="${WIRE_INVOKED_BY:-typed}"; WIRE_P="${WIRE_PERSONA:-$(sed -n 's/^persona:[[:space:]]*//p' .wire/local/persona.yml 2>/dev/null | head -1)}"; [ -n "$WIRE_P" ] || WIRE_P="$(awk -v e="$(git config --get user.email 2>/dev/null | tr '[:upper:]' '[:lower:]')" '/^[[:space:]]*-[[:space:]]+name:/{m=0} /@/{n=split(tolower($0),f,/[][, \\t"'"'"']+/); for(i=1;i<=n;i++) if(e!="" && f[i]==e) m=1} /^[[:space:]]+persona:/{if(m){sub(/^[[:space:]]+persona:[[:space:]]*/,""); print; exit}}' .wire/engagement/team.yml 2>/dev/null)"; WIRE_PERSONA_VALUE="$(printf '%s' "$WIRE_P" | tr -cd 'a-z-')"; [ "${WIRE_TELEMETRY:-true}" = "false" ] || ( mkdir -p ~/.wire; if [ ! -f ~/.wire/telemetry_id ]; then WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]'); echo "$WIRE_UID" > ~/.wire/telemetry_id; curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\\"writeKey\\":\\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\\",\\"userId\\":\\"$WIRE_UID\\",\\"traits\\":{\\"username\\":\\"$(whoami)\\",\\"hostname\\":\\"$(hostname)\\",\\"os\\":\\"$(uname -s)\\",\\"plugin_version\\":\\"4.6.7\\",\\"first_seen\\":\\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\\"}}" > /dev/null 2>&1; fi; WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo unknown); curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\\"writeKey\\":\\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\\",\\"userId\\":\\"$WIRE_UID\\",\\"event\\":\\"wire_command\\",\\"properties\\":{\\"command\\":\\"looker-studio-audit-generate\\",\\"timestamp\\":\\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\\",\\"git_repo\\":\\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\\",\\"git_branch\\":\\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\\",\\"username\\":\\"$(whoami)\\",\\"hostname\\":\\"$(hostname)\\",\\"plugin_version\\":\\"4.6.7\\",\\"os\\":\\"$(uname -s)\\",\\"runtime\\":\\"gemini\\",\\"invoked_by\\":\\"$WIRE_INVOKED_BY_VALUE\\",\\"persona\\":\\"$WIRE_PERSONA_VALUE\\"}}" > /dev/null 2>&1 ) > /dev/null 2>&1 &
 ```
 
 ## The `invoked_by` property
@@ -165,7 +165,7 @@ newlines, code snippets, anything; this heredoc is not shell-interpreted>
 WIRE_TRACE_DETAIL_EOF
   python3 -c "
 import json, datetime
-detail = open('/tmp/wire_trace_detail_$$.txt').read().rstrip('\n')
+detail = open('/tmp/wire_trace_detail_$$.txt').read().rstrip('\\n')
 event = {
     'ts': datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'),
     'release': '<release_folder_or_null>',
@@ -389,8 +389,8 @@ If `audit/looker_studio_audit.md` already exists, ask whether to re-generate (ov
 Run, from the repository root:
 
 ```bash
-python3 <plugin-root>/scripts/looker_studio_capture.py \
-  --out .wire/releases/$ARGUMENTS/audit/looker_studio/captures \
+python3 <plugin-root>/scripts/looker_studio_capture.py \\
+  --out .wire/releases/$ARGUMENTS/audit/looker_studio/captures \\
   --screenshots <report_url> [<report_url> ...]
 ```
 
@@ -401,8 +401,8 @@ The script visits every page (hidden pages included) so every data source's fiel
 ### Step 3: Extract each report
 
 ```bash
-python3 <plugin-root>/scripts/looker_studio_extract.py \
-  --capture .wire/releases/$ARGUMENTS/audit/looker_studio/captures/<report_id> \
+python3 <plugin-root>/scripts/looker_studio_extract.py \\
+  --capture .wire/releases/$ARGUMENTS/audit/looker_studio/captures/<report_id> \\
   --out .wire/releases/$ARGUMENTS/audit/looker_studio/reports/<report_id>
 ```
 
@@ -411,10 +411,10 @@ Writes `report.json` and `report.md`. The extractor redacts connector settings w
 ### Step 4: Record chart data (Route C)
 
 ```bash
-python3 <plugin-root>/scripts/looker_studio_parity.py \
-  --capture .wire/releases/$ARGUMENTS/audit/looker_studio/captures/<report_id> \
-  --report .wire/releases/$ARGUMENTS/audit/looker_studio/reports/<report_id>/report.json \
-  --out .wire/releases/$ARGUMENTS/migration/parity/looker_studio/<report_id> \
+python3 <plugin-root>/scripts/looker_studio_parity.py \\
+  --capture .wire/releases/$ARGUMENTS/audit/looker_studio/captures/<report_id> \\
+  --report .wire/releases/$ARGUMENTS/audit/looker_studio/reports/<report_id>/report.json \\
+  --out .wire/releases/$ARGUMENTS/migration/parity/looker_studio/<report_id> \\
   --namespace <looker_studio_namespace>
 ```
 
@@ -425,11 +425,11 @@ Writes one folder per chart result (`source.csv`, optional `compare.csv` and `to
 `recordings.json` names the billing project and location of every BigQuery chart's job. For each distinct pair:
 
 ```bash
-python3 <plugin-root>/scripts/looker_studio_jobs.py fetch --billing-project <project> --location <location> \
+python3 <plugin-root>/scripts/looker_studio_jobs.py fetch --billing-project <project> --location <location> \\
   --report-id <report_id> --out .wire/releases/$ARGUMENTS/audit/looker_studio/jobs/<report_id>
-python3 <plugin-root>/scripts/looker_studio_jobs.py link \
-  --jobs .wire/releases/$ARGUMENTS/audit/looker_studio/jobs/<report_id>/jobs_raw.json \
-  --report .wire/releases/$ARGUMENTS/audit/looker_studio/reports/<report_id>/report.json \
+python3 <plugin-root>/scripts/looker_studio_jobs.py link \\
+  --jobs .wire/releases/$ARGUMENTS/audit/looker_studio/jobs/<report_id>/jobs_raw.json \\
+  --report .wire/releases/$ARGUMENTS/audit/looker_studio/reports/<report_id>/report.json \\
   --out .wire/releases/$ARGUMENTS/audit/looker_studio/jobs/<report_id>
 ```
 
@@ -438,10 +438,10 @@ If `fetch` fails for lack of `bigquery.jobs.listAll`, record the billing project
 ### Step 6: Build the catalogs
 
 ```bash
-python3 <plugin-root>/scripts/looker_studio_catalog.py \
-  --reports .wire/releases/$ARGUMENTS/audit/looker_studio/reports/*/report.json \
-  --chart-sql .wire/releases/$ARGUMENTS/audit/looker_studio/jobs/*/chart_sql.json \
-  --namespace <looker_studio_namespace> \
+python3 <plugin-root>/scripts/looker_studio_catalog.py \\
+  --reports .wire/releases/$ARGUMENTS/audit/looker_studio/reports/*/report.json \\
+  --chart-sql .wire/releases/$ARGUMENTS/audit/looker_studio/jobs/*/chart_sql.json \\
+  --namespace <looker_studio_namespace> \\
   --out .wire/releases/$ARGUMENTS/audit/looker_studio
 ```
 
