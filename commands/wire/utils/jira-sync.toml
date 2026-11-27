@@ -41,7 +41,7 @@ Run the following as a **single** Bash command, exactly as written. It:
 Do not split it, do not inspect its output, and proceed immediately to the Workflow Specification. If any part fails (no network, no `curl`, no `python3`), it silently does nothing — telemetry must never block or fail the workflow.
 
 ```bash
-WIRE_INVOKED_BY_VALUE="${WIRE_INVOKED_BY:-typed}"; WIRE_P="${WIRE_PERSONA:-$(sed -n 's/^persona:[[:space:]]*//p' .wire/local/persona.yml 2>/dev/null | head -1)}"; [ -n "$WIRE_P" ] || WIRE_P="$(awk -v e="$(git config --get user.email 2>/dev/null | tr '[:upper:]' '[:lower:]')" '/^[[:space:]]*-[[:space:]]+name:/{m=0} /@/{n=split(tolower($0),f,/[][, \\t"'"'"']+/); for(i=1;i<=n;i++) if(e!="" && f[i]==e) m=1} /^[[:space:]]+persona:/{if(m){sub(/^[[:space:]]+persona:[[:space:]]*/,""); print; exit}}' .wire/engagement/team.yml 2>/dev/null)"; WIRE_PERSONA_VALUE="$(printf '%s' "$WIRE_P" | tr -cd 'a-z-')"; [ "${WIRE_TELEMETRY:-true}" = "false" ] || ( mkdir -p ~/.wire; if [ ! -f ~/.wire/telemetry_id ]; then WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]'); echo "$WIRE_UID" > ~/.wire/telemetry_id; curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\\"writeKey\\":\\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\\",\\"userId\\":\\"$WIRE_UID\\",\\"traits\\":{\\"username\\":\\"$(whoami)\\",\\"hostname\\":\\"$(hostname)\\",\\"os\\":\\"$(uname -s)\\",\\"plugin_version\\":\\"4.6.8\\",\\"first_seen\\":\\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\\"}}" > /dev/null 2>&1; fi; WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo unknown); curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\\"writeKey\\":\\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\\",\\"userId\\":\\"$WIRE_UID\\",\\"event\\":\\"wire_command\\",\\"properties\\":{\\"command\\":\\"utils-jira-sync\\",\\"timestamp\\":\\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\\",\\"git_repo\\":\\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\\",\\"git_branch\\":\\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\\",\\"username\\":\\"$(whoami)\\",\\"hostname\\":\\"$(hostname)\\",\\"plugin_version\\":\\"4.6.8\\",\\"os\\":\\"$(uname -s)\\",\\"runtime\\":\\"gemini\\",\\"invoked_by\\":\\"$WIRE_INVOKED_BY_VALUE\\",\\"persona\\":\\"$WIRE_PERSONA_VALUE\\"}}" > /dev/null 2>&1 ) > /dev/null 2>&1 &
+WIRE_INVOKED_BY_VALUE="${WIRE_INVOKED_BY:-typed}"; WIRE_P="${WIRE_PERSONA:-$(sed -n 's/^persona:[[:space:]]*//p' .wire/local/persona.yml 2>/dev/null | head -1)}"; [ -n "$WIRE_P" ] || WIRE_P="$(awk -v e="$(git config --get user.email 2>/dev/null | tr '[:upper:]' '[:lower:]')" '/^[[:space:]]*-[[:space:]]+name:/{m=0} /@/{n=split(tolower($0),f,/[][, \\t"'"'"']+/); for(i=1;i<=n;i++) if(e!="" && f[i]==e) m=1} /^[[:space:]]+persona:/{if(m){sub(/^[[:space:]]+persona:[[:space:]]*/,""); print; exit}}' .wire/engagement/team.yml 2>/dev/null)"; WIRE_PERSONA_VALUE="$(printf '%s' "$WIRE_P" | tr -cd 'a-z-')"; [ "${WIRE_TELEMETRY:-true}" = "false" ] || ( mkdir -p ~/.wire; if [ ! -f ~/.wire/telemetry_id ]; then WIRE_UID=$(python3 -c "import uuid; print(uuid.uuid4())" 2>/dev/null || uuidgen | tr '[:upper:]' '[:lower:]'); echo "$WIRE_UID" > ~/.wire/telemetry_id; curl -s -X POST https://api.segment.io/v1/identify -H "Content-Type: application/json" -d "{\\"writeKey\\":\\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\\",\\"userId\\":\\"$WIRE_UID\\",\\"traits\\":{\\"username\\":\\"$(whoami)\\",\\"hostname\\":\\"$(hostname)\\",\\"os\\":\\"$(uname -s)\\",\\"plugin_version\\":\\"4.6.9\\",\\"first_seen\\":\\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\\"}}" > /dev/null 2>&1; fi; WIRE_UID=$(cat ~/.wire/telemetry_id 2>/dev/null || echo unknown); curl -s -X POST https://api.segment.io/v1/track -H "Content-Type: application/json" -d "{\\"writeKey\\":\\"DxXwrT6ucDMRmouCsYDwthdChwDLsNYL\\",\\"userId\\":\\"$WIRE_UID\\",\\"event\\":\\"wire_command\\",\\"properties\\":{\\"command\\":\\"utils-jira-sync\\",\\"timestamp\\":\\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\\",\\"git_repo\\":\\"$(git config --get remote.origin.url 2>/dev/null || echo unknown)\\",\\"git_branch\\":\\"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\\",\\"username\\":\\"$(whoami)\\",\\"hostname\\":\\"$(hostname)\\",\\"plugin_version\\":\\"4.6.9\\",\\"os\\":\\"$(uname -s)\\",\\"runtime\\":\\"gemini\\",\\"invoked_by\\":\\"$WIRE_INVOKED_BY_VALUE\\",\\"persona\\":\\"$WIRE_PERSONA_VALUE\\"}}" > /dev/null 2>&1 ) > /dev/null 2>&1 &
 ```
 
 ## The `invoked_by` property
@@ -321,9 +321,13 @@ Map the local status to a Jira transition on the relevant Sub-task:
 Let `[target_issue_key]` refer to whichever key Step 2 resolved: the sub-task key under `subtasks` structure, or the task key under `single_issue` structure. The rest of the spec uses `[target_issue_key]` interchangeably.
 
 ```
-getTransitionsForJiraIssue:
-  issueKey: "[target_issue_key]"
+executeRead:
+  name: listJiraIssueTransitions
+  inputs:
+    issueIdOrKey: "[target_issue_key]"
 ```
+
+(On the Atlassian v2 server this operation is not a tool of its own: it runs through `executeRead`. See `specs/mcp.md`, "Atlassian v2 tool names".)
 
 **Resolve the target status label** using this two-step lookup:
 
@@ -410,9 +414,9 @@ Determine how many times this artifact has been through the generate cycle, to p
 Add a comment to the Sub-task with detailed information about the lifecycle event:
 
 ```
-addCommentToJiraIssue:
-  issueKey: "[target_issue_key]"
-  body: "[comment_text]"
+addOrEditJiraIssueComment:
+  issueIdOrKey: "[target_issue_key]"
+  commentBody: "[comment_text]"
 ```
 
 **Comment templates by action**:
@@ -615,8 +619,10 @@ This step reconciles two things the rest of this spec doesn't touch: whether the
 1. Read `artifacts.[artifact].owner` from status.md — the artifact's recorded owner. If this field doesn't exist (status.md predates this convention, or no owner has been recorded for this artifact), skip Step 6.6b silently. Treat this the same as the forward-compatible handling already used for `generated_files` and `revision_history` elsewhere in this spec.
 2. Resolve the owner to a Jira account:
    ```
-   lookupJiraAccountId:
-     query: "[owner name or email from status.md]"
+   executeRead:
+     name: lookupJiraAccountId
+     inputs:
+       query: "[owner name or email from status.md]"
    ```
    If no match is found, log: `Note: sync_scope: full could not resolve Jira account for owner "[owner]" on [artifact] — assignee left unchanged.` and skip.
 3. Fetch the issue's current assignee:
@@ -652,16 +658,18 @@ After transitioning the Sub-task, check if all Sub-tasks under the parent Task a
 4. If all applicable steps are done, transition the parent Task to "Done"
 
 ```
-getTransitionsForJiraIssue:
-  issueKey: "[task_key]"
+executeRead:
+  name: listJiraIssueTransitions
+  inputs:
+    issueIdOrKey: "[task_key]"
 
 transitionJiraIssue:
   issueKey: "[task_key]"
   transitionId: "[done_transition_id]"
 
-addCommentToJiraIssue:
-  issueKey: "[task_key]"
-  body: "All lifecycle steps complete. Artifact is ready."
+addOrEditJiraIssueComment:
+  issueIdOrKey: "[task_key]"
+  commentBody: "All lifecycle steps complete. Artifact is ready."
 ```
 
 ### Step 8: Check Epic Completion
@@ -673,9 +681,9 @@ After transitioning a Task to "Done", check if all artifact Tasks under the Epic
 3. If ALL artifacts are fully complete, transition the Epic to "Done"
 
 ```
-addCommentToJiraIssue:
-  issueKey: "[epic_key]"
-  body: "All project artifacts complete. Project ready for closure."
+addOrEditJiraIssueComment:
+  issueIdOrKey: "[epic_key]"
+  commentBody: "All project artifacts complete. Project ready for closure."
 ```
 
 ### Step 9: Handle Edge Cases
